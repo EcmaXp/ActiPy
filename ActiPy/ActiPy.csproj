@@ -53,6 +53,13 @@
   <ItemGroup>
     <Compile Include="ActiPy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PythonPlugin.cs" />
+    <Compile Include="ReflectHelper.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ActiPy.resx">
+      <DependentUpon>ActiPy.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

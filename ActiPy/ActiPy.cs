@@ -1,64 +1,56 @@
-﻿using Advanced_Combat_Tracker;
-using IronPython.Hosting;
-using IronPython.Runtime.Types;
-using Microsoft.Scripting.Hosting;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
+using Advanced_Combat_Tracker;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace ActiPy
 {
     public class ActiPyPlugin : IActPluginV1
     {
-        private ScriptEngine engine;
-        private ScriptScope scope;
         public TabPage pluginScreenSpace;
         public Label pluginStatusText;
+        internal List<PythonPlugin> plugins;
+
+        public ActiPyPlugin()
+        {
+
+        }
 
         public void InitPlugin(TabPage pluginScreenSpace, Label pluginStatusText)
         {
             this.pluginScreenSpace = pluginScreenSpace;
             this.pluginStatusText = pluginStatusText;
+            
+            var plugin = ActGlobals.oFormActMain.ActPlugins.Where(x => x.pluginObj == this).FirstOrDefault();
+            var directory = Path.Combine(System.IO.Path.GetDirectoryName(plugin.pluginFile.FullName), "addons");
 
-            engine = Python.CreateEngine();
-            scope = engine.CreateScope();
-            scope.SetVariable("plugin", this);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
 
-            // TODO: Support scripting by file (but how?)
+            plugins = new List<PythonPlugin>();
+            foreach (var pluginFile in Directory.GetFiles(directory, "*.py"))
+            {
+                plugins.Add(new PythonPlugin(pluginFile));
+            }
+            
+            // this.plugin.enabled = true;
+            // pluginScreenSpace.Controls.Add(this);
+            // TODO: Support scripting by file (by config panel; required GUI)
             // TODO: Multi-scripting
-
-            // pre-loader stage A (without scope)
-            engine.Execute(@"
-import clr
-import System.Reflection.Assembly
-clr.AddReferenceToFileAndPath(System.Reflection.Assembly.GetEntryAssembly().Location)
-");
-
-            // pre-loader stage B (with scope ~)
-            engine.Execute(@"
-import Advanced_Combat_Tracker as ACT
-ActGlobals = ACT.ActGlobals
-", scope);
-
-            // loader
-            var result = engine.ExecuteAndWrap(@"
-repr(ActGlobals.charName)
-
-# last execute code will write as label text
-dir()
-", scope);
-
-            // write status
-            scope.SetVariable("_result", result);
-            pluginStatusText.Text = engine.Execute<string>(@"_result if isinstance(_result, str) else repr(_result)", scope); ;
+            // TODO: Support OverlayPlugin
         }
 
         public void DeInitPlugin()
         {
-            // unloader
-            engine.Execute(@"
-# unload code here
-", scope);
-
-            pluginStatusText.Text = "Plugin Unloaded";
+            foreach (var plugin in plugins)
+            {
+                plugin.DeInitPlugin();
+            }
         }
+
+        // TODO: fix Add/Enable plugins.
     }
 }

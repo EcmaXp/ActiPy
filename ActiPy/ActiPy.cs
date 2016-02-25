@@ -3,6 +3,7 @@ using Advanced_Combat_Tracker;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace ActiPy
 {
@@ -22,8 +23,8 @@ namespace ActiPy
             this.pluginScreenSpace = pluginScreenSpace;
             this.pluginStatusText = pluginStatusText;
             
-            var plugin = ActGlobals.oFormActMain.ActPlugins.Where(x => x.pluginObj == this).FirstOrDefault();
-            var directory = Path.Combine(System.IO.Path.GetDirectoryName(plugin.pluginFile.FullName), "addons");
+            var thisPlugin = ActGlobals.oFormActMain.ActPlugins.Where(x => x.pluginObj == this).FirstOrDefault();
+            var directory = Path.Combine(System.IO.Path.GetDirectoryName(thisPlugin.pluginFile.FullName), "addons");
 
             if (!Directory.Exists(directory))
             {
@@ -33,24 +34,68 @@ namespace ActiPy
             plugins = new List<PythonPlugin>();
             foreach (var pluginFile in Directory.GetFiles(directory, "*.py"))
             {
-                plugins.Add(new PythonPlugin(pluginFile));
+                pluginStatusText.Text = "Processing " + pluginFile;
+                PythonPlugin plugin = new PythonPlugin(pluginFile);
+                plugins.Add(plugin);
             }
-            
-            // this.plugin.enabled = true;
-            // pluginScreenSpace.Controls.Add(this);
-            // TODO: Support scripting by file (by config panel; required GUI)
-            // TODO: Multi-scripting
-            // TODO: Support OverlayPlugin
+
+            foreach (var plugin in plugins.Reverse<PythonPlugin>())
+            {
+                pluginStatusText.Text = "Loading " + plugin.path;
+                plugin.pdata.cbEnabled.Checked = true;
+
+                try
+                {
+                    try
+                    {
+                        plugin.InitPlugin();
+                    }
+                    catch (Exception)
+                    {
+                        plugin.DeInitPython();
+                        plugin.DeInitPlugin();
+                        plugins.Remove(plugin);
+                        throw;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("While loading script by ActiPy, exception are raised.\r\n" + ex.ToString());
+                }
+            }
+
+            switch (plugins.Count)
+            {
+                case 0:
+                    pluginStatusText.Text = "ActiPy Loaded but there is no script.";
+                    break;
+                case 1:
+                    pluginStatusText.Text = "ActiPy Loaded with 1 script.";
+                    break;
+                default:
+                    pluginStatusText.Text = String.Format("ActiPy Loaded with {0} scripts.", plugins.Count);
+                    break;
+            }
+
+            // TODO: Support OverlayPlugin?
         }
 
         public void DeInitPlugin()
         {
-            foreach (var plugin in plugins)
+            foreach (var plugin in plugins.Reverse<PythonPlugin>())
             {
-                plugin.DeInitPlugin();
+                pluginStatusText.Text = "Unloading " + plugin.path;
+                try
+                {
+                    plugin.DeInitPlugin();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString());
+                }
+
+                plugins.Remove(plugin);
             }
         }
-
-        // TODO: fix Add/Enable plugins.
     }
 }

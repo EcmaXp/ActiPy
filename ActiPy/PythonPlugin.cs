@@ -16,6 +16,7 @@ namespace ActiPy
         protected ScriptScope scope;
         public ActPluginData pdata;
         public String path;
+        public Boolean controlEnabled;
         
         public PythonPlugin(String path) : this(ActGlobals.oFormActMain.AddPluginPanel(path, true))
         {
@@ -48,8 +49,8 @@ namespace ActiPy
             newCheckBox.Anchor = oldCheckBox.Anchor;
 
             newCheckBox.GotFocus += new System.EventHandler(this.pluginPanelChildGotFocus);
-            newCheckBox.CheckedChanged += new System.EventHandler(this.pluginPanelEnabledChecked);
 
+            pdata.cbEnabled = newCheckBox;
             pdata.pPluginInfo.Controls.Remove(oldCheckBox);
             pdata.pPluginInfo.Controls.Add(newCheckBox);
         }
@@ -65,31 +66,49 @@ namespace ActiPy
             CheckBox checkBox = (CheckBox)sender;
 
             if (checkBox.Checked)
-                InitPlugin();
+                InitPlugin(false);
             else
                 DeInitPlugin(false);
         }
-        
+
         public void InitPlugin()
         {
-            InitPlugin(pdata.tpPluginSpace, pdata.lblPluginStatus);
+            InitPlugin(true);
         }
 
         public void InitPlugin(TabPage pluginScreenSpace, Label pluginStatusText)
         {
+            pdata.tpPluginSpace = pluginScreenSpace;
+            pdata.lblPluginStatus = pluginStatusText;
+            InitPlugin(true);
+        }
+
+        public void InitPlugin(Boolean isFirst)
+        {
+            if (isFirst)
+                pdata.cbEnabled.CheckedChanged += new System.EventHandler(this.pluginPanelEnabledChecked);
+
             TabControl tcPlugins = ReflectHelper.Get_FormActMain_TcPlugins();
             pdata.tpPluginSpace = new TabPage(pdata.lblPluginTitle.Text);
             tcPlugins.TabPages.Add(pdata.tpPluginSpace);
-            
+
+            // TODO: preload script for assambly infomation?
+
             InitPython();
             InitScript();
             LoadScript();
-
-            // TODO: preload script for assambly infomation?
         }
 
-        public void DeInitPlugin(Boolean isFullDeinit)
+        public void DeInitPlugin()
         {
+            DeInitPlugin(true);
+        }
+
+        public void DeInitPlugin(Boolean isLast)
+        {
+            string statusText = "Script Stopping";
+            pdata.lblPluginStatus.Text = statusText;
+
             if (IsPythonLoaded())
             {
                 UnloadScript(); // TODO: isScriptLoaded require?
@@ -100,20 +119,11 @@ namespace ActiPy
             tcPlugins.TabPages.Remove(pdata.tpPluginSpace);
             pdata.tpPluginSpace.Dispose();
 
-            if (!isFullDeinit)
-            {
-                pdata.lblPluginStatus.Text = "Plugin Unloaded";
-            }
-            else
-            {
-                ReflectHelper.Invoke_FormActMain_PluginRemovePanel(pdata);
-                pdata.lblPluginStatus.Text = "You can't see this message :P";
-            }
-        }
+            if (pdata.lblPluginStatus.Text == statusText)
+                pdata.lblPluginStatus.Text = "Script Stopped";
 
-        public void DeInitPlugin()
-        {
-            DeInitPlugin(true);
+            if (isLast)
+                ReflectHelper.Invoke_FormActMain_PluginRemovePanel(pdata);            
         }
 
         internal void InitPython()
@@ -134,11 +144,7 @@ namespace ActiPy
 
         internal void InitScript()
         {
-            if (!IsPythonLoaded())
-                throw new Exception("Python does not loaded.");
-
             scope.SetVariable("plugin", this);
-
             engine.Execute("import Advanced_Combat_Tracker as ACT", scope);
             engine.Execute("from Advanced_Combat_Tracker import ActGlobals", scope);
         }
@@ -156,31 +162,32 @@ namespace ActiPy
             try
             {
                 engine.ExecuteFile(path, scope);
-                ExecuteScript("load_hook()");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // TODO: detail ex
-                pdata.lblPluginStatus.Text = "Failed to load script :(";
-                MessageBox.Show(ex.ToString());
-                return;
+                pdata.lblPluginStatus.Text = "Script has Exception";
+                throw;
             }
-            
+
             if (pdata.lblPluginStatus.Text == statusText)
-                pdata.lblPluginStatus.Text = "Script Loaded.";
+                pdata.lblPluginStatus.Text = "Script Started";
         }
 
         public ObjectHandle ExecuteScript(String code)
         {
-            if (!IsPythonLoaded())
-                throw new Exception("Python does not loaded.");
-
             return engine.ExecuteAndWrap(code, scope);
         }
 
         internal void UnloadScript()
         {
-            ExecuteScript("unload_hook()");
+            ExecuteScript(@"
+def __exit():
+    import sys
+    globals().pop('__exit')
+    if hasattr(sys, 'exitfunc'):
+        sys.exitfunc()
+__exit()
+");
         }
     }
 }

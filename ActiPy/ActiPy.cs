@@ -22,26 +22,22 @@ namespace ActiPy
         {
             this.pluginScreenSpace = pluginScreenSpace;
             this.pluginStatusText = pluginStatusText;
-            
-            var thisPlugin = ActGlobals.oFormActMain.ActPlugins.Where(x => x.pluginObj == this).FirstOrDefault();
-            var directory = Path.Combine(System.IO.Path.GetDirectoryName(thisPlugin.pluginFile.FullName), "addons");
 
+            var directory = Path.Combine(GetPluginPath(), "addons");
             if (!Directory.Exists(directory))
-            {
                 Directory.CreateDirectory(directory);
-            }
 
             plugins = new List<PythonPlugin>();
             foreach (var pluginFile in Directory.GetFiles(directory, "*.py"))
             {
                 pluginStatusText.Text = "Processing " + pluginFile;
-                PythonPlugin plugin = new PythonPlugin(pluginFile);
+                PythonPlugin plugin = new PythonPlugin(this, pluginFile);
                 plugins.Add(plugin);
             }
 
             foreach (var plugin in plugins.Reverse<PythonPlugin>())
             {
-                pluginStatusText.Text = "Loading " + plugin.path;
+                pluginStatusText.Text = "Loading " + plugin.scriptPath;
                 plugin.pdata.cbEnabled.Checked = true;
 
                 try
@@ -84,7 +80,7 @@ namespace ActiPy
         {
             foreach (var plugin in plugins.Reverse<PythonPlugin>())
             {
-                pluginStatusText.Text = "Unloading " + plugin.path;
+                pluginStatusText.Text = "Unloading " + plugin.scriptPath;
                 try
                 {
                     plugin.DeInitPlugin();
@@ -96,6 +92,13 @@ namespace ActiPy
 
                 plugins.Remove(plugin);
             }
+
+            pluginStatusText.Text = "ActiPy Unloaded.";
+        }
+
+        public string GetPluginPath() {
+            var thisPlugin = ActGlobals.oFormActMain.ActPlugins.Where(x => x.pluginObj == this).FirstOrDefault();
+            return Path.GetDirectoryName(thisPlugin.pluginFile.FullName);
         }
     }
 }

@@ -7,6 +7,8 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Drawing;
 using System.Runtime.Remoting;
+using System.IO;
+using System.Collections.Generic;
 
 namespace ActiPy
 {
@@ -14,18 +16,22 @@ namespace ActiPy
     {
         protected ScriptEngine engine;
         protected ScriptScope scope;
+        protected ActiPyPlugin parent;
         public ActPluginData pdata;
-        public String path;
+        public String scriptPath;
         public Boolean controlEnabled;
         
-        public PythonPlugin(String path) : this(ActGlobals.oFormActMain.AddPluginPanel(path, true))
+        public PythonPlugin(ActiPyPlugin parent, String scriptPath) : this(parent, ActGlobals.oFormActMain.AddPluginPanel(scriptPath, true))
         {
-            this.path = path;
+            this.parent = parent;
+            this.scriptPath = scriptPath;
         }
 
-        public PythonPlugin(ActPluginData data)
+        public PythonPlugin(ActiPyPlugin parent, ActPluginData data)
         {
-            pdata = data;
+            this.parent = parent;
+            this.pdata = data;
+
             pdata.pluginObj = this;
 
             pluginPanelFixSettingPage();
@@ -133,6 +139,15 @@ namespace ActiPy
 
             engine = Python.CreateEngine();
             engine.Runtime.LoadAssembly(System.Reflection.Assembly.GetEntryAssembly());
+            engine.Execute("import Advanced_Combat_Tracker");
+
+            var pluginPath = parent.GetPluginPath();
+            var paths = new List<string>();
+            paths.Add(Path.Combine(pluginPath, "addons"));
+            paths.Add(Path.Combine(pluginPath, "PyLib"));
+            paths.Add(Path.Combine(pluginPath, "PyDLLs"));
+            engine.SetSearchPaths(paths);
+
             scope = engine.CreateScope();
         }
 
@@ -144,9 +159,11 @@ namespace ActiPy
 
         internal void InitScript()
         {
-            scope.SetVariable("plugin", this);
-            engine.Execute("import Advanced_Combat_Tracker as ACT", scope);
-            engine.Execute("from Advanced_Combat_Tracker import ActGlobals", scope);
+            // XXX: unknown behavior make __name__ are forced as <module>
+            // scope.SetVariable("__name__", "__main__");
+
+            scope.SetVariable("__path__", this.scriptPath);
+            scope.SetVariable("__plugin__", this);
         }
 
         public Boolean IsPythonLoaded()
@@ -161,7 +178,8 @@ namespace ActiPy
 
             try
             {
-                engine.ExecuteFile(path, scope);
+                ScriptSource source = engine.CreateScriptSourceFromFile(scriptPath);
+                source.Execute(scope);
             }
             catch (Exception)
             {

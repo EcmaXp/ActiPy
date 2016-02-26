@@ -83,7 +83,16 @@ namespace ActiPy
                 pluginStatusText.Text = "Unloading " + plugin.scriptPath;
                 try
                 {
-                    plugin.DeInitPlugin();
+                    try
+                    {
+                        plugin.DeInitPlugin();
+                    }
+                    catch (Exception)
+                    {
+                        plugin.DeInitPython();
+                        plugin.DeInitPlugin();
+                        throw;
+                    }
                 }
                 catch (Exception ex)
                 {

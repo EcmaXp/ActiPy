@@ -96,16 +96,21 @@ namespace ActiPy
                 ReflectHelper.Get_FormActMain_Plugins().Remove(pdata);
                 pdata.cbEnabled.CheckedChanged += new System.EventHandler(this.pluginPanelEnabledChecked);
             }
-
-            TabControl tcPlugins = ReflectHelper.Get_FormActMain_TcPlugins();
+            
             pdata.tpPluginSpace = new TabPage(pdata.lblPluginTitle.Text);
 
-            // BtcPlugins.TabPages.Add(pdata.tpPluginSpace);
             // TODO: preload script for assambly infomation?
-
             InitPython();
             InitScript();
             LoadScript();
+        }
+
+        public void EnableTabPage()
+        {
+            TabControl tcPlugins = ReflectHelper.Get_FormActMain_TcPlugins();
+
+            if (!tcPlugins.TabPages.Contains(pdata.tpPluginSpace))
+                tcPlugins.TabPages.Add(pdata.tpPluginSpace);
         }
 
         public void DeInitPlugin()
@@ -125,7 +130,8 @@ namespace ActiPy
             }
 
             TabControl tcPlugins = ReflectHelper.Get_FormActMain_TcPlugins();
-            tcPlugins.TabPages.Remove(pdata.tpPluginSpace);
+            if (tcPlugins.TabPages.Contains(pdata.tpPluginSpace))
+                tcPlugins.TabPages.Remove(pdata.tpPluginSpace);
             pdata.tpPluginSpace.Dispose();
 
             if (pdata.lblPluginStatus.Text == statusText)

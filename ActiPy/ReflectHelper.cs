@@ -19,6 +19,14 @@ namespace ActiPy
             return tcPlugins;
         }
 
+        public static List<ActPluginData> Get_FormActMain_Plugins()
+        {
+            FieldInfo field = ActGlobals.oFormActMain.GetType().GetField("plugins",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            List<ActPluginData> Plugins = (List<ActPluginData>)field.GetValue(ActGlobals.oFormActMain);
+            return Plugins;
+        }
+
         public static void Invoke_FormActMain_PluginRemovePanel(ActPluginData pluginData)
         {
             MethodInfo method = ActGlobals.oFormActMain.GetType().GetMethod("PluginRemovePanel",

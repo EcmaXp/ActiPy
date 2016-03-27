@@ -33,7 +33,7 @@ namespace ActiPy
             this.pdata = data;
 
             pdata.pluginObj = this;
-
+            
             pluginPanelFixSettingPage();
             pluginPanelFixEnableCheckbox();
         }
@@ -92,12 +92,15 @@ namespace ActiPy
         public void InitPlugin(Boolean isFirst)
         {
             if (isFirst)
+            {
+                ReflectHelper.Get_FormActMain_Plugins().Remove(pdata);
                 pdata.cbEnabled.CheckedChanged += new System.EventHandler(this.pluginPanelEnabledChecked);
+            }
 
             TabControl tcPlugins = ReflectHelper.Get_FormActMain_TcPlugins();
             pdata.tpPluginSpace = new TabPage(pdata.lblPluginTitle.Text);
-            tcPlugins.TabPages.Add(pdata.tpPluginSpace);
 
+            // BtcPlugins.TabPages.Add(pdata.tpPluginSpace);
             // TODO: preload script for assambly infomation?
 
             InitPython();
@@ -129,7 +132,10 @@ namespace ActiPy
                 pdata.lblPluginStatus.Text = "Script Stopped";
 
             if (isLast)
-                ReflectHelper.Invoke_FormActMain_PluginRemovePanel(pdata);            
+            {
+                ReflectHelper.Get_FormActMain_Plugins().Add(pdata);
+                ReflectHelper.Invoke_FormActMain_PluginRemovePanel(pdata);
+            }
         }
 
         internal void InitPython()
